@@ -1,0 +1,4 @@
+A Proposal to Add a Fixed Size Array Wrapper to the Standard Library Technical Report
+http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2003/n1479.html
+
+
