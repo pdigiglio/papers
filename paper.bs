@@ -1,0 +1,622 @@
+<pre class='metadata'>
+Status: D
+Group: wg21
+TR: http://
+ED: http://
+
+Shortname: P????
+Revision: 0
+!Audience:  Library Evolution Working Group
+
+Markup Shorthands: markdown yes
+Editor: Paolo Di Giglio, p.digiglio91@gmail.com
+Abstract: I propose C-style array types of known bound, <code>T[N]</code>, should be tuple-like. My aim twofold: improve their usability in contexts where they're preferable over <code>std::array</code> and provide compile-time index checks through <code>std::get</code>. The tuple-like protocol implementation I propose for <code>T[N]</code> is designed after <code>std::array&ltT, N&gt</code>'s.
+
+Default Highlight: cpp
+Title: Tuple protocol for C-style arrays T[N]
+H1: Tuple protocol for C-style arrays <code>T[N]</code>
+</pre>
+
+<body>
+
+<h2 id="introduction">Introduction</h2>
+
+The tuple protocol has been introduced in C++11.
+If `T` is a tuple-like type:
+ * It can be destructured into `std::tuple_size_v<T>` elements;
+ * Its `I`-th element has type `std::tuple_element_t<I, T>` and can be extracted through the `std::get` function template.
+
+Since C++17, the tuple protocol interacts with the core language, which allows
+structured bindings to expressions of tuple-like types.
+
+The standard already mandates the following types to be tuple-like:
+
+ * `std::ranges::subranges` (since C++20),
+ * `std::tuple` (since C++11),
+ * `std::pair` (since C++11),
+ * and, most relevant to this paper, `std::array` (since C++11).
+
+In this paper, I propose the standard should make C-style arrays of known
+bound, `T[N]`, tuple-like too.
+The implementation of the tuple-like protocol (i.e. `std::tuple_size`,
+`std::tuple_element` and `std::get`) I propose is designed after the existing
+one for `std::array<T, N>`.
+
+<h2 id="motivation">Motivation</h2>
+
+As far as their tuple-like properties are concerned, `std::array<T, N>` and
+`T[N]` are equivalent.
+Both have a fixed number of elements, `N`, which is known at compile-time; each
+element being of type `T` and accessible by a compile-time index.
+
+Implementing the tuple-like protocol for C-style arrays would make them
+eligible to be passed as parameters to:
+
+<ul>
+    <li>`std::apply` (since C++17),</li>
+    <li>`std::make_from_tuple` (since C++17)</li>
+    <li>
+        and, `std::tuple_cat` (since C++11)
+        <div class="note">
+            Prior to [[P2165R3]], the choice whether to support tuple-like
+            types besides `std::tuple` in `std::tuple_cat` was up to the
+            implementers.
+        </div>
+    </li>
+</ul>
+
+In sections [[#motivation.automatic_size_deduction]] and
+[[#motivation.interacting_with_c_apis]] I outline some use cases where `T[N]`
+may be preferable over `std::array<T, N>`.
+In such cases, being able to call the above functions without the need for a
+temporary `std::array<T, N>` would be beneficial.
+
+<h3 id="motivation.automatic_size_deduction">Automatic size deduction</h3>
+
+Unlike `std::array`, compilers are able to deduce the size (only) of a C-style
+array from the number of elements in its initializer list:
+
+```cpp
+int c_arr[] = { 0, 1, 2 };
+static_assert(sizeof(c_arr) / sizeof(c_arr[0]) == 3, "");
+```
+
+This limitation of `std::array` was noted by Alisdair Meredith in [[N1479]]
+itself and lead Zhihao Yuan to float the idea of extending the implementation
+of the tuple protocol to C-style arrays in [[ARRAY-AS-A-TUPLE]].
+
+CTAD (since C++17) for `std::array` mitigates this problem but doesn't allow a
+user to specify the element type and deduce the size only.
+Function template `std::to_array` (since C++20) does but poses constraints on
+the element type (namely, it has be copy- or move-constructible and non-array).
+
+<h3 id="motivation.interacting_with_c_apis">Interacting with C APIs</h3>
+
+C (or C-like) API may force users to deal with C-style arrays:
+
+```cpp
+// File: geometry_c_api.h
+#define GEOMETRY_STATUS_OK 0
+
+struct ReferenceFrame;
+int get_origin(struct ReferenceFrame* frame, double (*pt)[3]);
+```
+
+If this paper gets accepted, client code might look like this:
+
+```
+class Point
+{
+public:
+    explicit Point(double x, double y, double z);
+    // ...
+};
+
+std::optional<Point> get_origin(ReferenceFrame& frame)
+{
+    double pt[3] { };
+    if (get_origin(&frame, &pt) != GEOMETRY_STATUS_OK)
+        return { };
+
+    return std::make_from_tuple<Point>(pt);
+}
+```
+
+<h3 id="motivation.compile-time_bound_check">Compile-time bound check</h3>
+
+A useful side benefit of the tuple protocol is the bound check performed by
+function template `std::get`:
+
+```
+int c_arr[42]{};
+
+// This would not not compile because index 42 is out of bounds
+//std::get<42>(c_arr) = 42;
+
+// Not OK: this is UB and compiles  
+c_arr[42] = 42;
+```
+
+Making `T[N]` tuple-like would help users prevent the above class of bugs
+without any need for static analysis tools or sanitizers.
+
+<h2 id="impact_on_the_standard">Impact on the standard</h2>
+
+This proposal is a pure library extension.
+It proposes changes to an existing header, `<tuple>`, but it does not require
+changes to any standard classes or functions.
+
+This proposal does not require changes in the core language.
+It does not produce changes in the core language either.
+Even though the tuple protocol interferes with the core language, which
+provides structured-binding support for tuple-like types, the standard already
+defines special rules for structured bindings to C-style arrays.
+
+This proposal does not depend on any other library extension. 
+In section [[#design_decisions.proposed_implementation]], I propose an
+implementation in standard C++11.
+
+<h3 id="impact_on_standard.interaction_with_other_papers">Interaction with other papers</h3>
+
+With this proposal, `T[N]` would satisfy exposition-only concept
+<i>`tuple-like`</i> introduced by Corentin Jabot with [[P2165R3]].
+So, `std::tuple`s and `std::pair`s would be constructible from and comparable
+with C-style arrays:
+
+```cpp
+int c_arr[] = { 0, 1 };
+//std::tuple<int, int, int> t = c_arr; // Error: different tuple size
+std::pair<int, int> p = c_arr;
+p == c_arr; // Ok: evaluates to true
+p < c_arr;  // Ok: evaluates to false
+```
+
+```cpp
+int c_arr[] = { 0, 1, 2 };
+std::tuple<int, int, int> t = c_arr;
+//std::pair<int, int> p = c_arr; // Error: different tuple size
+t == c_arr; // Ok: evaluates to true
+t < c_arr;  // Ok: evaluates to false
+```
+
+<h2 id="design_decisions">Design decisions</h2>
+
+<h3 id="design_decisions.proposed_implementation">Proposed implementation</h3>
+
+In the following subsections, I outline my proposed implementation of the tuple
+protocol for C-style arrays of known bound in standard C++11.
+My implementation is designed after `std::array`'s.
+
+<h4 id="design_decisions.proposed_implementation.tuple_size">`std::tuple_size`</h4>
+
+For the `std::tuple_size` class template, I propose the following specializations:
+
+```
+namespace std {
+
+// (ts)
+template <typename T, size_t N>
+struct tuple_size<T\[N]> : public integral_constant<size_t, N> { };
+
+// (ts.c)
+template <typename T, size_t N>
+struct tuple_size<T const\[N]> : public integral_constant<size_t, N> { };
+
+// (ts.v)
+template <typename T, size_t N>
+struct tuple_size<T volatile\[N]> : public integral_constant<size_t, N> { };
+
+// (ts.cv)
+template <typename T, size_t N>
+struct tuple_size<T volatile const\[N]> : public integral_constant<size_t, N> { };
+
+}
+```
+
+Please note that specializations `ts.c`, `ts.v` and `ts.cv` are required because:
+
+ * The standard already defines cv-qualified specializations for `std::tuple_size`;
+ * Applying cv-qualifiers to an array type applies the qualifiers to the element type and any array type whose elements are of cv-qualified type is considered to have the same cv-qualification [[CPP-REF-ARRAY]].
+
+So, by not defining (say) `ts.c`, the following code
+
+```
+using const_array_t = int const [42];
+static_assert(std::tuple_size<array_t>::value == 42, "Size OK");
+```
+
+would fail to compile because the template instanciation for `std::tuple_size`
+is ambiguous.
+In fact both the following specializations would be viable candidates:
+
+```
+namespace std {
+
+// Already in the standard
+template<class T>
+struct tuple_size<const T>
+    : public integral_constant<size_t, tuple_size<T>::value> { };
+// With T = int[42]
+
+// Proposed in this paper
+template <typename T, size_t N>
+struct tuple_size<T\[N]> : public integral_constant<size_t, N> { };
+// With T = int const, N = 42
+
+}
+```
+
+The same holds for specializations `ts.v` and `ts.cv`.
+
+<h4 id="design_decisions.proposed_implementation.tuple_element">`std::tuple_element`</h4>
+
+For the `std::tuple_element` class template, I propose the following specializations:
+
+```
+namespace std {
+
+// (te)
+template <size_t Idx, typename T, size_t N>
+struct tuple_element<Idx, T\[N]>
+{
+    static_assert(Idx < N, "Index out of bounds");
+    using type = T;
+};
+
+// (te.c)
+template <size_t Idx, typename T, size_t N>
+struct tuple_element<Idx, T const\[N]>
+{
+    static_assert(Idx < N, "Index out of bounds");
+    using type = T const;
+};
+
+// (te.v)
+template <size_t Idx, typename T, size_t N>
+struct tuple_element<Idx, T volatile\[N]>
+{
+    static_assert(Idx < N, "Index out of bounds");
+    using type = T volatile;
+};
+
+// (te.cv)
+template <size_t Idx, typename T, size_t N>
+struct tuple_element<Idx, T volatile const\[N]>
+{
+    static_assert(Idx < N, "Index out of bounds");
+    using type = T volatile const;
+};
+
+}
+```
+
+The reason for introducing specializations `te.c`, `te.v` and `te.cv` is the
+same that lead to the introduction of specializations `ts.c`, `ts.v` and
+`ts.cv` in section [[#design_decisions.proposed_implementation.tuple_size]].
+
+<h4 id="design_decisions.proposed_implementation.get">`std::get`</h4>
+
+For the `std::get` function templates, I propose:
+
+```
+namespace std {
+
+template <size_t Idx, typename T, size_t N>
+constexpr T& get(T (&arr)\[N]) noexcept {
+    static_assert(Idx < N, "Index out of bounds");
+    return arr[Idx];
+}
+
+template <size_t Idx, typename T, size_t N>
+constexpr T&& get(T (&&arr)\[N]) noexcept {
+    static_assert(Idx < N, "Index out of bounds");
+    return move(arr[Idx]);
+}
+
+}
+```
+
+<!--
+The above function templates do not qualify for ADL, so their declaration has
+to be visible at the point where `std::apply`, `std::make_from_tuple` and
+`std::tuple_cat` are defined.
+-->
+
+<h3 id="design_decisions.alternative_implementation">Alternative implementation</h3>
+
+Another possible implementation for the C-style array specializations of class
+templates `std::tuple_size` and `std::tuple_element` in C++20 is the following
+(courtesy of Arthur O'Dwyer):
+
+```
+namespace std {
+
+template <typename T, size_t N>
+    requires(is_same_v<T, remove_cv_t<T>>)
+struct tuple_size<T\[N]> : public integral_constant<size_t, N> {};
+
+template <size_t Idx, typename T, size_t N>
+    requires(is_same_v<T, remove_cv_t<T>>)
+struct tuple_element<Idx, T\[N]> {
+    static_assert(Idx < N, "Index out of bounds");
+    using type = T;
+};
+
+}
+```
+
+The `requires` clause SFINAEs out the specializations of `std::tuple_size` and
+`std::tuple_element` for cv-qualified array types and prevents the
+ambiguous-template-instantiation compilation error described in section
+[[#design_decisions.proposed_implementation.tuple_size]].
+
+
+As for the `std::get` function templates, implementing them by means of the
+`requires` clause is not feasible.
+In fact, the following:
+
+```
+namespace std {
+
+template <size_t Idx, typename T, size_t N>
+    requires(Idx < N)
+constexpr T& get(T (&arr)\[N]) noexcept {
+    return arr[Idx];
+}
+
+template <size_t Idx, typename T, size_t N>
+    requires(Idx < N)
+constexpr T&& get(T (&&arr)\[N]) noexcept {
+    return move(arr[Idx]);
+}
+
+}
+```
+
+may lead to an inconsistent behavior with the existing implementation for
+`std::array<T, N>` in unevaluated contexts:
+
+```
+std::array<int, 42> cpp_arr{};
+using cpp_elem_ptr_t = decltype(&std::get<42>(cpp_arr));
+// cpp_elem_ptr_t is int*
+
+//int c_arr[42]{};
+//using c_elem_ptr_t = decltype(&std::get<42>(c_arr));
+// error: no matching function for call to 'get<42>(int [42])'
+```
+
+<h2 id="technical_specifications">Technical specifications</h2>
+
+In this section, I present the changes I propose to the standard.
+The wording is based on [[N4910]].
+
+
+**Modify section** "Header `<tuple>` synopsis `[tuple.syn]`":
+
+```
+// 22.4.6, tuple helper classes
+template<class T> struct tuple_size; // not defined
+template<class T> struct tuple_size<const T>;
+
+template<class... Types> struct tuple_size<tuple<Types...>>;
+```
+
+<div style="background-color: #00ff0010">
+```
+template <class T, size_t N> struct tuple_size<T\[N]>;
+template <class T, size_t N> struct tuple_size<T const\[N]>;
+template <class T, size_t N> struct tuple_size<T volatile\[N]>;
+template <class T, size_t N> struct tuple_size<T volatile const\[N]>;
+```
+</div>
+
+```
+template<size_t I, class T> struct tuple_element; // not defined
+template<size_t I, class T> struct tuple_element<I, const T>;
+
+template<size_t I, class... Types>
+  struct tuple_element<I, tuple<Types...>>;
+```
+
+<div style="background-color: #00ff0010">
+```
+template <size_t I, class T, size_t N>
+ struct tuple_element<I, T\[N]>;
+template <size_t I, class T, size_t N>
+  struct tuple_element<I, T const\[N]>;
+template <size_t I, class T, size_t N>
+  struct tuple_element<I, T volatile\[N]>;
+template <size_t I, class T, size_t N>
+  struct tuple_element<I, T volatile const\[N]>;
+```
+</div>
+
+```
+template<size_t I, class T>
+using tuple_element_t = typename tuple_element<I, T>::type;
+
+// 22.4.7, element access
+template<size_t I, class... Types>
+  constexpr tuple_element_t<I, tuple<Types...>>& get(tuple<Types...>&) noexcept;
+...
+template<class T, class... Types>
+  constexpr const T&& get(const tuple<Types...>&& t) noexcept;
+```
+
+<div style="background-color: #00ff0010">
+```
+template <size_t I, class T, size_t N>
+  constexpr T& get(T (&arr)\[N]) noexcept;
+template <size_t I, class T, size_t N>
+  constexpr T&& get(T (&&arr)\[N]) noexcept;
+```
+</div>
+
+**Modify section** "Tuple helper classes `[tuple.helper]`":
+
+```
+template<class T> struct tuple_size;
+```
+
+<sup>1</sup> All specializations of `tuple_size` meet the <i>Cpp17UnaryTypeTrait</i> requirements (21.3.2) with a base
+characteristic of `integral_constant<size_t, N>` for some `N`.
+
+
+```
+template<class... Types>
+  struct tuple_size<tuple<Types...>> : public integral_constant<size_t, sizeof...(Types)> { };
+```
+
+<div style="background-color: #00ff0010">
+```
+template <class T, size_t N>
+  struct tuple_size<T\[N]> : public integral_constant<size_t, N> { };
+
+template <class T, size_t N>
+  struct tuple_size<T const\[N]> : public integral_constant<size_t, N> { };
+
+template <class T, size_t N>
+  struct tuple_size<T volatile\[N]> : public integral_constant<size_t, N> { };
+
+template <class T, size_t N>
+  struct tuple_size<T volatile const\[N]> : public integral_constant<size_t, N> { };
+```
+</div>
+
+```
+template<size_t I, class... Types>
+  struct tuple_element<I, tuple<Types...>> {
+    using type = TI;
+  };
+```
+<sup>2</sup> <i>Mandates:</i> `I < sizeof...(Types)`.<br>
+<sup>3</sup> <i>Type:</i> `TI` is the type of the `I`-th element of `Types`, where indexing is zero-based.
+
+<div style="background-color: #00ff0010">
+```
+template <size_t I, class T, size_t N>
+  struct tuple_element<I, T\[N]> {
+      using type = T;
+  };
+```
+<sup>4</sup> <i>Mandates:</i> `I < N`.
+
+```
+template <size_t I, class T, size_t N>
+  struct tuple_element<Idx, T const\[N]> {
+      using type = T const;
+  };
+```
+<sup>5</sup> <i>Mandates:</i> `I < N`.
+
+```
+template <size_t I, class T, size_t N>
+  struct tuple_element<Idx, T volatile\[N]> {
+      using type = T volatile;
+  };
+```
+<sup>6</sup> <i>Mandates:</i> `I < N`.
+
+
+```
+template <size_t I, class T, size_t N>
+  struct tuple_element<Idx, T volatile const\[N]> {
+      using type = T volatile const;
+  };
+```
+<sup>7</sup> <i>Mandates:</i> `I < N`.
+
+</div>
+
+**Append to section** "Element access `[tuple.elem]`":
+
+
+<div style="background-color: #00ff0010">
+```
+template <size_t I, class T, size_t N>
+  constexpr T& get(T (&arr)\[N]) noexcept;
+
+template <size_t I, class T, size_t N>
+  constexpr T&& get(T (&&arr)\[N]) noexcept;
+```
+<sup>9</sup> <i>Mandates:</i> `I < N`.<br>
+<sup>10</sup> <i>Returns:</i> A reference to the `I`-th element of `arr`, where indexing is zero-based.
+</div>
+
+<h2>Questions</h2>
+
+ * Why are fixed-extent `std::span`s non tuple-like [[P2116R0]]?
+ * `volatile` specializations for `std::tuple_size` and `std::tuple_element` have been deprecated.
+     - Why?
+     - Should I propose them for `T[N]`?
+
+
+
+<h2>Acknowledgements</h2>
+
+I'd like to thank (sorted by `[](Dev const& lhs, Dev const& rhs) { return lhs.name < rhs.name; }`)
+
+ * Arthur O'Dwyer,
+ * Barry Revzin,
+ * Giuseppe D'Angelo,
+ * Jason McKesson,
+ * Lénárd Szolnoki,
+ * Nikolay Mihaylov,
+ * Zhihao Yuan
+
+for their valuable feedbacks which made this paper possible.
+
+</body>
+
+
+<pre class="biblio">
+{
+    "p2165r3" : 
+    {
+        "authors" : [
+            "Corentin Jabot"
+        ],
+        "date" : "2022-01-19",
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2165r3.pdf",
+        "title": "Compatibility between tuple, pair and tuple-like objects"
+    },
+    "p2116r0" : {
+        "authors" : [
+            "Tim Song"
+        ],
+        "date" : "2020-02-14",
+        "href": "http://open-std.org/JTC1/SC22/WG21/docs/papers/2020/p2116r0.html",
+        "title": "Remove tuple-like protocol support from fixed-extent span"
+    },
+    "n1479" : {
+        "authors": [
+            "Alisdair Meredith"
+        ],
+        "date" : "2003-04-23",
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2003/n1479.html",
+        "title": "A Proposal to Add a Fixed Size Array Wrapper to the Standard Library Technical Report"
+    },
+	"cpp-ref-array" : {
+		"href" : "https://en.cppreference.com/w/cpp/language/array",
+		"title": "Array declaration on cpp.reference.com"
+	},
+    "array-as-a-tuple" : {
+        "authors" : [
+            "Zhihao Yuan"
+        ],
+        "date" : "2012-12-31",
+        "href" : "https://blog.miator.net/post/39362111475/use-array-as-a-tuple",
+        "title" : "Use array as a tuple"
+    },
+    "n4910" : {
+        "authors" : [
+            "Thomas Köppe"
+        ],
+        "date" : "2022-03-17",
+        "href" : "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/n4910.pdf",
+        "title" : "Working Draft, Standard for Programming Language C++"
+    }
+}
+</pre>
+
