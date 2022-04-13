@@ -1,8 +1,7 @@
 <pre class='metadata'>
 Status: D
 Group: wg21
-TR: http://
-ED: http://
+ED: https://pdigiglio.github.io/papers/tuple_protocol_for_c_style_arrays/draft0.html
 
 Shortname: P????
 Revision: 0
