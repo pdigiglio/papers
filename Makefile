@@ -1,2 +1,7 @@
-paper.html: paper.md
-	pandoc -i paper.md -o paper.html --toc --standalone
+.PHONY: clean
+
+paper.html: paper.bs
+	bikeshed spec paper.bs paper.html
+
+clean:
+	rm -rvf paper.html
