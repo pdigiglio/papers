@@ -73,11 +73,9 @@ while getopts rdp:h name
 do
     case ${name} in
         r)
-            echo "rev"
             modeIdx=1
             ;;
         d)
-            echo "dra"
             ;;
         p)
             set_source_paper "${OPTARG}" || exit 1
@@ -92,9 +90,16 @@ do
     esac
 done
 
-echo "Paper: '${sourcePaper}'"
-echo "Mode:  '$modeIdx'"
-echo "Mode:  '${modes[$modeIdx]}'"
+if [[ -z "${sourceDir}" ]]
+then
+    echo "Missing argument: -p" > /dev/stderr
+    show_help
+    exit 1
+fi
+
+echo "Paper Path: '${sourceDir}'"
+echo "Mode Idx:   $modeIdx"
+echo "Mode:       ${modes[$modeIdx]}"
 
 make_paper || exit 1 
 make_index || exit 1
