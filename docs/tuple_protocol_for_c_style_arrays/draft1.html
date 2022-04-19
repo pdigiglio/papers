@@ -1561,9 +1561,9 @@ Possible extra rowspan handling
     blockquote c-[il] { color: inherit; } /* Literal.Number.Integer.Long */
   </style>
   <meta content="Bikeshed version fb1e763a4, updated Tue Mar 1 13:13:50 2022 -0800" name="generator">
-  <link href="http://" rel="canonical">
+  <link href="https://pdigiglio.github.io/papers/tuple_protocol_for_c_style_arrays/draft1.html" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
-  <meta content="39d7048ade88b16b99e3c299d9eee151e5aaab54" name="document-revision">
+  <meta content="7bbe16756cb2833a6573709e4561df1721ca5472" name="document-revision">
 <style>/* style-autolinks */
 
 .css.css, .property.property, .descriptor.descriptor {
@@ -2083,13 +2083,13 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">P????R0<br>Tuple protocol for C-style arrays <code class="highlight"><c- n>T</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-04-13">2022-04-13</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-04-19">2022-04-19</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt>This version:
-     <dd><a class="u-url" href="http://">http://</a>
-     <dt>Latest published version:
-     <dd><a href="http://">http://</a>
+     <dd><a class="u-url" href="https://pdigiglio.github.io/papers/tuple_protocol_for_c_style_arrays/draft1.html">https://pdigiglio.github.io/papers/tuple_protocol_for_c_style_arrays/draft1.html</a>
+     <dt>Previous Versions:
+     <dd><a href="https://pdigiglio.github.io/papers/tuple_protocol_for_c_style_arrays/draft0.html" rel="prev">https://pdigiglio.github.io/papers/tuple_protocol_for_c_style_arrays/draft0.html</a>
      <dt class="editor">Author:
      <dd class="editor p-author h-card vcard"><a class="p-name fn u-email email" href="mailto:p.digiglio91@gmail.com">Paolo Di Giglio</a>
      <dt>Project:
@@ -2127,15 +2127,23 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li>
        <a href="#design_decisions.proposed_implementation"><span class="secno">4.1</span> <span class="content">Proposed implementation</span></a>
        <ol class="toc">
-        <li><a href="#design_decisions.proposed_implementation.tuple_size"><span class="secno">4.1.1</span> <span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-></code></span></a>
-        <li><a href="#design_decisions.proposed_implementation.tuple_element"><span class="secno">4.1.2</span> <span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code></span></a>
+        <li>
+         <a href="#design_decisions.proposed_implementation.tuple_size"><span class="secno">4.1.1</span> <span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-></code></span></a>
+         <ol class="toc">
+          <li><a href="#design_decisions.proposed_implementation.tuple_size.const_qualified_specialization"><span class="secno">4.1.1.1</span> <span class="content"><code class="highlight"><c- k>const</c-></code>-qualified specialization</span></a>
+          <li><a href="#design_decisions.proposed_implementation.tuple_size.volatile_qualified_specialization"><span class="secno">4.1.1.2</span> <span class="content"><code class="highlight"><c- k>volatile</c-></code>-qualified specializations</span></a>
+         </ol>
+        <li>
+         <a href="#design_decisions.proposed_implementation.tuple_element"><span class="secno">4.1.2</span> <span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code></span></a>
+         <ol class="toc">
+          <li><a href="#cv-qualified-specializations"><span class="secno">4.1.2.1</span> <span class="content">cv-qualified specializations</span></a>
+         </ol>
         <li><a href="#design_decisions.proposed_implementation.get"><span class="secno">4.1.3</span> <span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>get</c-></code></span></a>
        </ol>
       <li><a href="#design_decisions.alternative_implementation"><span class="secno">4.2</span> <span class="content">Alternative implementation</span></a>
      </ol>
     <li><a href="#technical_specifications"><span class="secno">5</span> <span class="content">Technical specifications</span></a>
-    <li><a href="#questions"><span class="secno">6</span> <span class="content">Questions</span></a>
-    <li><a href="#acknowledgements"><span class="secno">7</span> <span class="content">Acknowledgements</span></a>
+    <li><a href="#acknowledgements"><span class="secno">6</span> <span class="content">Acknowledgements</span></a>
     <li>
      <a href="#references"><span class="secno"></span> <span class="content">References</span></a>
      <ol class="toc">
@@ -2283,24 +2291,17 @@ My implementation is designed after <code class="highlight"><c- n>std</c-><c- o>
 <c- k>template</c-> <c- o>&lt;</c-><c- k>typename</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
 <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- o>:</c-> <c- k>public</c-> <c- n>integral_constant</c-><c- o>&lt;</c-><c- b>size_t</c-><c- p>,</c-> <c- n>N</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
 
-<c- c1>// (ts.v)</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- k>typename</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-<c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-> <c- k>volatile</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- o>:</c-> <c- k>public</c-> <c- n>integral_constant</c-><c- o>&lt;</c-><c- b>size_t</c-><c- p>,</c-> <c- n>N</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
-
-<c- c1>// (ts.cv)</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- k>typename</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-<c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- o>:</c-> <c- k>public</c-> <c- n>integral_constant</c-><c- o>&lt;</c-><c- b>size_t</c-><c- p>,</c-> <c- n>N</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
-
 <c- p>}</c->
 </pre>
-   <p>Please note that specializations <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>c</c-></code>, <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>v</c-></code> and <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>cv</c-></code> are required because:</p>
+   <h5 class="heading settled" data-level="4.1.1.1" id="design_decisions.proposed_implementation.tuple_size.const_qualified_specialization"><span class="secno">4.1.1.1. </span><span class="content"><code class="highlight"><c- k>const</c-></code>-qualified specialization</span><a class="self-link" href="#design_decisions.proposed_implementation.tuple_size.const_qualified_specialization"></a></h5>
+   <p>Specialization <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>c</c-></code> is required because:</p>
    <ul>
     <li data-md>
-     <p>The standard already defines cv-qualified specializations for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-></code>;</p>
+     <p>The standard already defines a <code class="highlight"><c- k>const</c-></code>-qualified specialization for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-></code> (and <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code>);</p>
     <li data-md>
      <p>Applying cv-qualifiers to an array type applies the qualifiers to the element type and any array type whose elements are of cv-qualified type is considered to have the same cv-qualification <a data-link-type="biblio" href="#biblio-cpp-ref-array">[CPP-REF-ARRAY]</a>.</p>
    </ul>
-   <p>So, by not defining (say) <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>c</c-></code>, the following code</p>
+   <p>So, by not defining <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>c</c-></code>, the following code</p>
 <pre class="highlight"><c- k>using</c-> <c- n>const_array_t</c-> <c- o>=</c-> <c- b>int</c-> <c- k>const</c-> <c- p>[</c-><c- mi>42</c-><c- p>];</c->
 <c- k>static_assert</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-><c- o>&lt;</c-><c- n>array_t</c-><c- o>>::</c-><c- n>value</c-> <c- o>==</c-> <c- mi>42</c-><c- p>,</c-> <c- s>"Size OK"</c-><c- p>);</c->
 </pre>
@@ -2309,7 +2310,7 @@ In fact both the following specializations would be viable candidates:</p>
 <pre class="highlight"><c- k>namespace</c-> <c- nn>std</c-> <c- p>{</c->
 
 <c- c1>// Already in the standard</c->
-<c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
 <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- k>const</c-> <c- n>T</c-><c- o>></c->
     <c- o>:</c-> <c- k>public</c-> <c- n>integral_constant</c-><c- o>&lt;</c-><c- b>size_t</c-><c- p>,</c-> <c- n>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>::</c-><c- n>value</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
 <c- c1>// With T = int[42]</c->
@@ -2321,7 +2322,17 @@ In fact both the following specializations would be viable candidates:</p>
 
 <c- p>}</c->
 </pre>
-   <p>The same holds for specializations <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>v</c-></code> and <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>cv</c-></code>.</p>
+   <h5 class="heading settled" data-level="4.1.1.2" id="design_decisions.proposed_implementation.tuple_size.volatile_qualified_specialization"><span class="secno">4.1.1.2. </span><span class="content"><code class="highlight"><c- k>volatile</c-></code>-qualified specializations</span><a class="self-link" href="#design_decisions.proposed_implementation.tuple_size.volatile_qualified_specialization"></a></h5>
+   <p>The existing specializations of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-></code> (and <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code>)
+for <code class="highlight"><c- k>volatile</c-></code>-qualified types were deprecated in C++20 and will be removed in
+C++23, as per <a data-link-type="biblio" href="#biblio-p1831r1">[P1831R1]</a>.
+So, there is no need to provide specializations of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-></code> (nor <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code>) for:</p>
+   <ul>
+    <li data-md>
+     <p><code class="highlight"><c- n>T</c-> <c- k>volatile</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-></code></p>
+    <li data-md>
+     <p><code class="highlight"><c- n>T</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-></code>.</p>
+   </ul>
    <h4 class="heading settled" data-level="4.1.2" id="design_decisions.proposed_implementation.tuple_element"><span class="secno">4.1.2. </span><span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code></span><a class="self-link" href="#design_decisions.proposed_implementation.tuple_element"></a></h4>
    <p>For the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code> class template, I propose the following specializations:</p>
 <pre class="highlight"><c- k>namespace</c-> <c- nn>std</c-> <c- p>{</c->
@@ -2342,26 +2353,32 @@ In fact both the following specializations would be viable candidates:</p>
     <c- k>using</c-> <c- n>type</c-> <c- o>=</c-> <c- n>T</c-> <c- k>const</c-><c- p>;</c->
 <c- p>};</c->
 
-<c- c1>// (te.v)</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- b>size_t</c-> <c- n>Idx</c-><c- p>,</c-> <c- k>typename</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-<c- k>struct</c-> <c- nc>tuple_element</c-><c- o>&lt;</c-><c- n>Idx</c-><c- p>,</c-> <c- n>T</c-> <c- k>volatile</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c->
-<c- p>{</c->
-    <c- k>static_assert</c-><c- p>(</c-><c- n>Idx</c-> <c- o>&lt;</c-> <c- n>N</c-><c- p>,</c-> <c- s>"Index out of bounds"</c-><c- p>);</c->
-    <c- k>using</c-> <c- n>type</c-> <c- o>=</c-> <c- n>T</c-> <c- k>volatile</c-><c- p>;</c->
-<c- p>};</c->
-
-<c- c1>// (te.cv)</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- b>size_t</c-> <c- n>Idx</c-><c- p>,</c-> <c- k>typename</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-<c- k>struct</c-> <c- nc>tuple_element</c-><c- o>&lt;</c-><c- n>Idx</c-><c- p>,</c-> <c- n>T</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c->
-<c- p>{</c->
-    <c- k>static_assert</c-><c- p>(</c-><c- n>Idx</c-> <c- o>&lt;</c-> <c- n>N</c-><c- p>,</c-> <c- s>"Index out of bounds"</c-><c- p>);</c->
-    <c- k>using</c-> <c- n>type</c-> <c- o>=</c-> <c- n>T</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>;</c->
-<c- p>};</c->
-
 <c- p>}</c->
 </pre>
-   <p>The reason for introducing specializations <code class="highlight"><c- n>te</c-><c- p>.</c-><c- n>c</c-></code>, <code class="highlight"><c- n>te</c-><c- p>.</c-><c- n>v</c-></code> and <code class="highlight"><c- n>te</c-><c- p>.</c-><c- n>cv</c-></code> is the
-same that lead to the introduction of specializations <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>c</c-></code>, <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>v</c-></code> and <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>cv</c-></code> in section <a href="#design_decisions.proposed_implementation.tuple_size">§ 4.1.1 std::tuple_size</a>.</p>
+   <h5 class="heading settled" data-level="4.1.2.1" id="cv-qualified-specializations"><span class="secno">4.1.2.1. </span><span class="content">cv-qualified specializations</span><a class="self-link" href="#cv-qualified-specializations"></a></h5>
+   <p>The reasoning behind the introduction of specialization <code class="highlight"><c- n>ts</c-><c- p>.</c-><c- n>c</c-></code> in <a href="#design_decisions.proposed_implementation.tuple_size">§ 4.1.1 std::tuple_size</a> also motivates the
+introduction of specialization <code class="highlight"><c- n>te</c-><c- p>.</c-><c- n>c</c-></code> here.</p>
+   <p>As for the <code class="highlight"><c- k>volatile</c-></code>-qualified specializations of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code>, I
+explain why there’s no need for those in section <a href="#design_decisions.proposed_implementation.tuple_size.volatile_qualified_specialization">§ 4.1.1.2 volatile-qualified specializations</a>.
+Please note however that, by my proposal, the following code would compile:</p>
+<pre class="highlight"><c- k>using</c-> <c- n>v_array_t</c-> <c- o>=</c-> <c- b>int</c-> <c- k>volatile</c-><c- p>[</c-><c- mi>42</c-><c- p>];</c->
+<c- k>using</c-> <c- n>cv_array_t</c-> <c- o>=</c-> <c- b>int</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>[</c-><c- mi>42</c-><c- p>];</c->
+
+<c- k>static_assert</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>is_same_v</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>tuple_element_t</c-><c- o>&lt;</c-><c- mi>0</c-><c- p>,</c-> <c- n>v_array_t</c-><c- o>></c-><c- p>,</c-> <c- b>int</c-> <c- k>volatile</c-><c- o>></c-><c- p>,</c-> <c- s>""</c-><c- p>);</c->
+<c- k>static_assert</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>tuple_size_v</c-><c- o>&lt;</c-><c- n>v_array_t</c-><c- o>></c-> <c- o>==</c-> <c- mi>42</c-><c- p>,</c-> <c- s>""</c-><c- p>);</c->
+
+<c- k>static_assert</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>is_same_v</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>tuple_element_t</c-><c- o>&lt;</c-><c- mi>0</c-><c- p>,</c-> <c- n>cv_array_t</c-><c- o>></c-><c- p>,</c-> <c- b>int</c-> <c- k>volatile</c-> <c- k>const</c-><c- o>></c-><c- p>,</c-> <c- s>""</c-><c- p>);</c->
+<c- k>static_assert</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>tuple_size_v</c-><c- o>&lt;</c-><c- n>cv_array_t</c-><c- o>></c-> <c- o>==</c-> <c- mi>42</c-><c- p>,</c-> <c- s>""</c-><c- p>);</c->
+</pre>
+   <p>I believe this to be correct.
+While none of the above <code class="highlight"><c- k>static_assert</c-></code>s would compile after <a data-link-type="biblio" href="#biblio-p1831r1">[P1831R1]</a> with:</p>
+<pre class="highlight"><c- k>using</c-> <c- n>v_array_t</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>array</c-><c- o>&lt;</c-><c- b>int</c-><c- p>,</c-> <c- mi>42</c-><c- o>></c-> <c- k>volatile</c-><c- p>;</c->
+<c- k>using</c-> <c- n>cv_array_t</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>array</c-><c- o>&lt;</c-><c- b>int</c-><c- p>,</c-> <c- mi>42</c-><c- o>></c-> <c- k>volatile</c-> <c- k>const</c-><c- p>;</c->
+</pre>
+   <p>They would both compile with:</p>
+<pre class="highlight"><c- k>using</c-> <c- n>v_array_t</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>array</c-><c- o>&lt;</c-><c- b>int</c-> <c- k>volatile</c-><c- p>,</c-> <c- mi>42</c-><c- o>></c-><c- p>;</c->
+<c- k>using</c-> <c- n>cv_array_t</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>array</c-><c- o>&lt;</c-><c- b>int</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>,</c-> <c- mi>42</c-><c- o>></c-><c- p>;</c->
+</pre>
    <h4 class="heading settled" data-level="4.1.3" id="design_decisions.proposed_implementation.get"><span class="secno">4.1.3. </span><span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>get</c-></code></span><a class="self-link" href="#design_decisions.proposed_implementation.get"></a></h4>
    <p>For the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>get</c-></code> function templates, I propose:</p>
 <pre class="highlight"><c- k>namespace</c-> <c- nn>std</c-> <c- p>{</c->
@@ -2387,11 +2404,11 @@ templates <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c
 <pre class="highlight"><c- k>namespace</c-> <c- nn>std</c-> <c- p>{</c->
 
 <c- k>template</c-> <c- o>&lt;</c-><c- k>typename</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-    <c- k>requires</c-><c- p>(</c-><c- n>is_same_v</c-><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>remove_cv_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-><c- p>)</c->
+    <c- k>requires</c-><c- p>(</c-><c- n>is_same_v</c-><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>remove_const_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-><c- p>)</c->
 <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- o>:</c-> <c- k>public</c-> <c- n>integral_constant</c-><c- o>&lt;</c-><c- b>size_t</c-><c- p>,</c-> <c- n>N</c-><c- o>></c-> <c- p>{};</c->
 
 <c- k>template</c-> <c- o>&lt;</c-><c- b>size_t</c-> <c- n>Idx</c-><c- p>,</c-> <c- k>typename</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-    <c- k>requires</c-><c- p>(</c-><c- n>is_same_v</c-><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>remove_cv_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-><c- p>)</c->
+    <c- k>requires</c-><c- p>(</c-><c- n>is_same_v</c-><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>remove_const_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-><c- p>)</c->
 <c- k>struct</c-> <c- nc>tuple_element</c-><c- o>&lt;</c-><c- n>Idx</c-><c- p>,</c-> <c- n>T</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- p>{</c->
     <c- k>static_assert</c-><c- p>(</c-><c- n>Idx</c-> <c- o>&lt;</c-> <c- n>N</c-><c- p>,</c-> <c- s>"Index out of bounds"</c-><c- p>);</c->
     <c- k>using</c-> <c- n>type</c-> <c- o>=</c-> <c- n>T</c-><c- p>;</c->
@@ -2399,7 +2416,7 @@ templates <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c
 
 <c- p>}</c->
 </pre>
-   <p>The <code class="highlight"><c- k>requires</c-></code> clause SFINAEs out the specializations of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-></code> and <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code> for cv-qualified array types and prevents the
+   <p>The <code class="highlight"><c- k>requires</c-></code> clause SFINAEs out the specializations of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-></code> and <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code> for <code class="highlight"><c- k>const</c-></code>-qualified array types and prevents the
 ambiguous-template-instantiation compilation error described in section <a href="#design_decisions.proposed_implementation.tuple_size">§ 4.1.1 std::tuple_size</a>.</p>
    <p>As for the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>get</c-></code> function templates, implementing them by means of the <code class="highlight"><c- k>requires</c-></code> clause is not feasible.
 In fact, the following:</p>
@@ -2441,8 +2458,6 @@ The wording is based on <a data-link-type="biblio" href="#biblio-n4910">[N4910]<
    <div style="background-color: #00ff0010">
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c-> <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-><c- p>;</c->
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c-> <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-><c- p>;</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c-> <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-> <c- k>volatile</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-><c- p>;</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c-> <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-><c- p>;</c->
 </pre>
    </div>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- b>size_t</c-> <c- n>I</c-><c- p>,</c-> <c- k>class</c-> <c- nc>T</c-><c- o>></c-> <c- k>struct</c-> <c- nc>tuple_element</c-><c- p>;</c-> <c- c1>// not defined</c->
@@ -2456,10 +2471,6 @@ The wording is based on <a data-link-type="biblio" href="#biblio-n4910">[N4910]<
  <c- k>struct</c-> <c- nc>tuple_element</c-><c- o>&lt;</c-><c- n>I</c-><c- p>,</c-> <c- n>T</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-><c- p>;</c->
 <c- k>template</c-> <c- o>&lt;</c-><c- b>size_t</c-> <c- n>I</c-><c- p>,</c-> <c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
   <c- k>struct</c-> <c- nc>tuple_element</c-><c- o>&lt;</c-><c- n>I</c-><c- p>,</c-> <c- n>T</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-><c- p>;</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- b>size_t</c-> <c- n>I</c-><c- p>,</c-> <c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-  <c- k>struct</c-> <c- nc>tuple_element</c-><c- o>&lt;</c-><c- n>I</c-><c- p>,</c-> <c- n>T</c-> <c- k>volatile</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-><c- p>;</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- b>size_t</c-> <c- n>I</c-><c- p>,</c-> <c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-  <c- k>struct</c-> <c- nc>tuple_element</c-><c- o>&lt;</c-><c- n>I</c-><c- p>,</c-> <c- n>T</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-><c- p>;</c->
 </pre>
    </div>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- b>size_t</c-> <c- n>I</c-><c- p>,</c-> <c- k>class</c-> <c- nc>T</c-><c- o>></c->
@@ -2493,12 +2504,6 @@ characteristic of <code class="highlight"><c- n>integral_constant</c-><c- o>&lt;
 
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
   <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- o>:</c-> <c- k>public</c-> <c- n>integral_constant</c-><c- o>&lt;</c-><c- b>size_t</c-><c- p>,</c-> <c- n>N</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
-
-<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-  <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-> <c- k>volatile</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- o>:</c-> <c- k>public</c-> <c- n>integral_constant</c-><c- o>&lt;</c-><c- b>size_t</c-><c- p>,</c-> <c- n>N</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
-
-<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-  <c- k>struct</c-> <c- nc>tuple_size</c-><c- o>&lt;</c-><c- n>T</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- o>:</c-> <c- k>public</c-> <c- n>integral_constant</c-><c- o>&lt;</c-><c- b>size_t</c-><c- p>,</c-> <c- n>N</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
 </pre>
    </div>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- b>size_t</c-> <c- n>I</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Types</c-><c- o>></c->
@@ -2520,18 +2525,6 @@ characteristic of <code class="highlight"><c- n>integral_constant</c-><c- o>&lt;
   <c- p>};</c->
 </pre>
     <sup>5</sup> <i>Mandates:</i> <code class="highlight"><c- n>I</c-> <c- o>&lt;</c-> <c- n>N</c-></code>. 
-<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- b>size_t</c-> <c- n>I</c-><c- p>,</c-> <c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-  <c- k>struct</c-> <c- nc>tuple_element</c-><c- o>&lt;</c-><c- n>Idx</c-><c- p>,</c-> <c- n>T</c-> <c- k>volatile</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- p>{</c->
-      <c- k>using</c-> <c- n>type</c-> <c- o>=</c-> <c- n>T</c-> <c- k>volatile</c-><c- p>;</c->
-  <c- p>};</c->
-</pre>
-    <sup>6</sup> <i>Mandates:</i> <code class="highlight"><c- n>I</c-> <c- o>&lt;</c-> <c- n>N</c-></code>. 
-<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- b>size_t</c-> <c- n>I</c-><c- p>,</c-> <c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>N</c-><c- o>></c->
-  <c- k>struct</c-> <c- nc>tuple_element</c-><c- o>&lt;</c-><c- n>Idx</c-><c- p>,</c-> <c- n>T</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-><c- o>></c-> <c- p>{</c->
-      <c- k>using</c-> <c- n>type</c-> <c- o>=</c-> <c- n>T</c-> <c- k>volatile</c-> <c- k>const</c-><c- p>;</c->
-  <c- p>};</c->
-</pre>
-    <sup>7</sup> <i>Mandates:</i> <code class="highlight"><c- n>I</c-> <c- o>&lt;</c-> <c- n>N</c-></code>. 
    </div>
    <p><strong>Append to section</strong> "Element access <code class="highlight"><c- p>[</c-><c- n>tuple</c-><c- p>.</c-><c- n>elem</c-><c- p>]</c-></code>":</p>
    <div style="background-color: #00ff0010">
@@ -2543,20 +2536,7 @@ characteristic of <code class="highlight"><c- n>integral_constant</c-><c- o>&lt;
 </pre>
     <sup>9</sup> <i>Mandates:</i> <code class="highlight"><c- n>I</c-> <c- o>&lt;</c-> <c- n>N</c-></code>.<br> <sup>10</sup> <i>Returns:</i> A reference to the <code class="highlight"><c- n>I</c-></code>-th element of <code class="highlight"><c- n>arr</c-></code>, where indexing is zero-based. 
    </div>
-   <h2 class="heading settled" data-level="6" id="questions"><span class="secno">6. </span><span class="content">Questions</span><a class="self-link" href="#questions"></a></h2>
-   <ul>
-    <li data-md>
-     <p>Why are fixed-extent <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>span</c-></code>s non tuple-like <a data-link-type="biblio" href="#biblio-p2116r0">[P2116R0]</a>?</p>
-    <li data-md>
-     <p><code class="highlight"><c- k>volatile</c-></code> specializations for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_size</c-></code> and <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple_element</c-></code> have been deprecated.</p>
-     <ul>
-      <li data-md>
-       <p>Why?</p>
-      <li data-md>
-       <p>Should I propose them for <code class="highlight"><c- n>T</c-><c- p>[</c-><c- n>N</c-><c- p>]</c-></code>?</p>
-     </ul>
-   </ul>
-   <h2 class="heading settled" data-level="7" id="acknowledgements"><span class="secno">7. </span><span class="content">Acknowledgements</span><a class="self-link" href="#acknowledgements"></a></h2>
+   <h2 class="heading settled" data-level="6" id="acknowledgements"><span class="secno">6. </span><span class="content">Acknowledgements</span><a class="self-link" href="#acknowledgements"></a></h2>
    <p>I’d like to thank (sorted by <code class="highlight"><c- p>[](</c-><c- n>Dev</c-> <c- k>const</c-><c- o>&amp;</c-> <c- n>lhs</c-><c- p>,</c-> <c- n>Dev</c-> <c- k>const</c-><c- o>&amp;</c-> <c- n>rhs</c-><c- p>)</c-> <c- p>{</c-> <c- k>return</c-> <c- n>lhs</c-><c- p>.</c-><c- n>name</c-> <c- o>&lt;</c-> <c- n>rhs</c-><c- p>.</c-><c- n>name</c-><c- p>;</c-> <c- p>}</c-></code>)</p>
    <ul>
     <li data-md>
@@ -2567,6 +2547,8 @@ characteristic of <code class="highlight"><c- n>integral_constant</c-><c- o>&lt;
      <p>Giuseppe D’Angelo,</p>
     <li data-md>
      <p>Jason McKesson,</p>
+    <li data-md>
+     <p>Jens Maurer,</p>
     <li data-md>
      <p>Lénárd Szolnoki,</p>
     <li data-md>
@@ -2716,8 +2698,8 @@ characteristic of <code class="highlight"><c- n>integral_constant</c-><c- o>&lt;
    <dd>Alisdair Meredith. <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2003/n1479.html"><cite>A Proposal to Add a Fixed Size Array Wrapper to the Standard Library Technical Report</cite></a>. 2003-04-23. URL: <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2003/n1479.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2003/n1479.html</a>
    <dt id="biblio-n4910">[N4910]
    <dd>Thomas Köppe. <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/n4910.pdf"><cite>Working Draft, Standard for Programming Language C++</cite></a>. 2022-03-17. URL: <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/n4910.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/n4910.pdf</a>
-   <dt id="biblio-p2116r0">[P2116R0]
-   <dd>Tim Song. <a href="http://open-std.org/JTC1/SC22/WG21/docs/papers/2020/p2116r0.html"><cite>Remove tuple-like protocol support from fixed-extent span</cite></a>. 2020-02-14. URL: <a href="http://open-std.org/JTC1/SC22/WG21/docs/papers/2020/p2116r0.html">http://open-std.org/JTC1/SC22/WG21/docs/papers/2020/p2116r0.html</a>
+   <dt id="biblio-p1831r1">[P1831R1]
+   <dd>JF Bastien. <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1831r1.html"><cite>Deprecating volatile: library</cite></a>. 2020-02-12. URL: <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1831r1.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1831r1.html</a>
    <dt id="biblio-p2165r3">[P2165R3]
    <dd>Corentin Jabot. <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2165r3.pdf"><cite>Compatibility between tuple, pair and tuple-like objects</cite></a>. 2022-01-19. URL: <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2165r3.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2165r3.pdf</a>
   </dl>
