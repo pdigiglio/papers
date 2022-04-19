@@ -201,23 +201,17 @@ struct tuple_size<T\[N]> : public integral_constant<size_t, N> { };
 template <typename T, size_t N>
 struct tuple_size<T const\[N]> : public integral_constant<size_t, N> { };
 
-// (ts.v)
-template <typename T, size_t N>
-struct tuple_size<T volatile\[N]> : public integral_constant<size_t, N> { };
-
-// (ts.cv)
-template <typename T, size_t N>
-struct tuple_size<T volatile const\[N]> : public integral_constant<size_t, N> { };
-
 }
 ```
 
-Please note that specializations `ts.c`, `ts.v` and `ts.cv` are required because:
+<h5 id="design_decisions.proposed_implementation.tuple_size.const_qualified_specialization">`const`-qualified specialization</h5>
 
- * The standard already defines cv-qualified specializations for `std::tuple_size`;
+Specialization `ts.c` is required because:
+
+ * The standard already defines a `const`-qualified specialization for `std::tuple_size` (and `std::tuple_element`);
  * Applying cv-qualifiers to an array type applies the qualifiers to the element type and any array type whose elements are of cv-qualified type is considered to have the same cv-qualification [[CPP-REF-ARRAY]].
 
-So, by not defining (say) `ts.c`, the following code
+So, by not defining `ts.c`, the following code
 
 ```
 using const_array_t = int const [42];
@@ -232,7 +226,7 @@ In fact both the following specializations would be viable candidates:
 namespace std {
 
 // Already in the standard
-template<class T>
+template <class T>
 struct tuple_size<const T>
     : public integral_constant<size_t, tuple_size<T>::value> { };
 // With T = int[42]
@@ -245,7 +239,16 @@ struct tuple_size<T\[N]> : public integral_constant<size_t, N> { };
 }
 ```
 
-The same holds for specializations `ts.v` and `ts.cv`.
+<h5 id="design_decisions.proposed_implementation.tuple_size.volatile_qualified_specialization">`volatile`-qualified specializations</h5>
+
+The existing specializations of `std::tuple_size` (and `std::tuple_element`)
+for `volatile`-qualified types were deprecated in C++20 and will be removed in
+C++23, as per [[P1831R1]].
+So, there is no need to provide specializations of `std::tuple_size` (nor
+`std::tuple_element`) for:
+
+ * `T volatile[N]`
+ * `T volatile const[N]`.
 
 <h4 id="design_decisions.proposed_implementation.tuple_element">`std::tuple_element`</h4>
 
@@ -270,28 +273,44 @@ struct tuple_element<Idx, T const\[N]>
     using type = T const;
 };
 
-// (te.v)
-template <size_t Idx, typename T, size_t N>
-struct tuple_element<Idx, T volatile\[N]>
-{
-    static_assert(Idx < N, "Index out of bounds");
-    using type = T volatile;
-};
-
-// (te.cv)
-template <size_t Idx, typename T, size_t N>
-struct tuple_element<Idx, T volatile const\[N]>
-{
-    static_assert(Idx < N, "Index out of bounds");
-    using type = T volatile const;
-};
-
 }
 ```
 
-The reason for introducing specializations `te.c`, `te.v` and `te.cv` is the
-same that lead to the introduction of specializations `ts.c`, `ts.v` and
-`ts.cv` in section [[#design_decisions.proposed_implementation.tuple_size]].
+<h5>cv-qualified specializations</h5>
+
+The reasoning behind the introduction of specialization `ts.c` in
+[[#design_decisions.proposed_implementation.tuple_size]] also motivates the
+introduction of specialization `te.c` here.
+
+As for the `volatile`-qualified specializations of `std::tuple_element`, I
+explain why there's no need for those in section
+[[#design_decisions.proposed_implementation.tuple_size.volatile_qualified_specialization]].
+Please note however that, by my proposal, the following code would compile:
+```
+using v_array_t = int volatile[42];
+using cv_array_t = int volatile const[42];
+
+static_assert(std::is_same_v<std::tuple_element_t<0, v_array_t>, int volatile>, "");
+static_assert(std::tuple_size_v<v_array_t> == 42, "");
+
+static_assert(std::is_same_v<std::tuple_element_t<0, cv_array_t>, int volatile const>, "");
+static_assert(std::tuple_size_v<cv_array_t> == 42, "");
+```
+
+I believe this to be correct.
+While none of the above `static_assert`s would compile after [[P1831R1]] with:
+
+```
+using v_array_t = std::array<int, 42> volatile;
+using cv_array_t = std::array<int, 42> volatile const;
+```
+
+They would both compile with:
+
+```
+using v_array_t = std::array<int volatile, 42>;
+using cv_array_t = std::array<int volatile const, 42>;
+```
 
 <h4 id="design_decisions.proposed_implementation.get">`std::get`</h4>
 
@@ -331,11 +350,11 @@ templates `std::tuple_size` and `std::tuple_element` in C++20 is the following
 namespace std {
 
 template <typename T, size_t N>
-    requires(is_same_v<T, remove_cv_t<T>>)
+    requires(is_same_v<T, remove_const_t<T>>)
 struct tuple_size<T\[N]> : public integral_constant<size_t, N> {};
 
 template <size_t Idx, typename T, size_t N>
-    requires(is_same_v<T, remove_cv_t<T>>)
+    requires(is_same_v<T, remove_const_t<T>>)
 struct tuple_element<Idx, T\[N]> {
     static_assert(Idx < N, "Index out of bounds");
     using type = T;
@@ -345,7 +364,7 @@ struct tuple_element<Idx, T\[N]> {
 ```
 
 The `requires` clause SFINAEs out the specializations of `std::tuple_size` and
-`std::tuple_element` for cv-qualified array types and prevents the
+`std::tuple_element` for `const`-qualified array types and prevents the
 ambiguous-template-instantiation compilation error described in section
 [[#design_decisions.proposed_implementation.tuple_size]].
 
@@ -405,8 +424,6 @@ template<class... Types> struct tuple_size<tuple<Types...>>;
 ```
 template <class T, size_t N> struct tuple_size<T\[N]>;
 template <class T, size_t N> struct tuple_size<T const\[N]>;
-template <class T, size_t N> struct tuple_size<T volatile\[N]>;
-template <class T, size_t N> struct tuple_size<T volatile const\[N]>;
 ```
 </div>
 
@@ -424,10 +441,6 @@ template <size_t I, class T, size_t N>
  struct tuple_element<I, T\[N]>;
 template <size_t I, class T, size_t N>
   struct tuple_element<I, T const\[N]>;
-template <size_t I, class T, size_t N>
-  struct tuple_element<I, T volatile\[N]>;
-template <size_t I, class T, size_t N>
-  struct tuple_element<I, T volatile const\[N]>;
 ```
 </div>
 
@@ -474,12 +487,6 @@ template <class T, size_t N>
 
 template <class T, size_t N>
   struct tuple_size<T const\[N]> : public integral_constant<size_t, N> { };
-
-template <class T, size_t N>
-  struct tuple_size<T volatile\[N]> : public integral_constant<size_t, N> { };
-
-template <class T, size_t N>
-  struct tuple_size<T volatile const\[N]> : public integral_constant<size_t, N> { };
 ```
 </div>
 
@@ -508,23 +515,6 @@ template <size_t I, class T, size_t N>
   };
 ```
 <sup>5</sup> <i>Mandates:</i> `I < N`.
-
-```
-template <size_t I, class T, size_t N>
-  struct tuple_element<Idx, T volatile\[N]> {
-      using type = T volatile;
-  };
-```
-<sup>6</sup> <i>Mandates:</i> `I < N`.
-
-
-```
-template <size_t I, class T, size_t N>
-  struct tuple_element<Idx, T volatile const\[N]> {
-      using type = T volatile const;
-  };
-```
-<sup>7</sup> <i>Mandates:</i> `I < N`.
 
 </div>
 
@@ -571,6 +561,15 @@ for their valuable feedbacks which made this paper possible.
 
 <pre class="biblio">
 {
+    "p1831r1" : 
+    {
+        "authors" : [
+            "JF Bastien"
+        ],
+        "date" : "2020-02-12",
+        "href" : "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1831r1.html",
+        "title" : "Deprecating volatile: library"
+    },
     "p2165r3" : 
     {
         "authors" : [
