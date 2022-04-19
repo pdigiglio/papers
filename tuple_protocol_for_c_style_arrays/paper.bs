@@ -1,7 +1,8 @@
 <pre class='metadata'>
 Status: D
 Group: wg21
-ED: https://pdigiglio.github.io/papers/tuple_protocol_for_c_style_arrays/draft0.html
+Previous Version: https://pdigiglio.github.io/papers/tuple_protocol_for_c_style_arrays/draft0.html
+ED: https://pdigiglio.github.io/papers/tuple_protocol_for_c_style_arrays/draft1.html
 
 Shortname: P????
 Revision: 0
@@ -550,6 +551,7 @@ I'd like to thank (sorted by `[](Dev const& lhs, Dev const& rhs) { return lhs.na
  * Barry Revzin,
  * Giuseppe D'Angelo,
  * Jason McKesson,
+ * Jens Maurer,
  * Lénárd Szolnoki,
  * Nikolay Mihaylov,
  * Zhihao Yuan
