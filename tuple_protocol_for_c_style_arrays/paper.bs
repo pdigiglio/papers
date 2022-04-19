@@ -533,14 +533,14 @@ template <size_t I, class T, size_t N>
 <sup>10</sup> <i>Returns:</i> A reference to the `I`-th element of `arr`, where indexing is zero-based.
 </div>
 
+<!--
 <h2>Questions</h2>
 
  * Why are fixed-extent `std::span`s non tuple-like [[P2116R0]]?
  * `volatile` specializations for `std::tuple_size` and `std::tuple_element` have been deprecated.
      - Why?
      - Should I propose them for `T[N]`?
-
-
+-->
 
 <h2>Acknowledgements</h2>
 
